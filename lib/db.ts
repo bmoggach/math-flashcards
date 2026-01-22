@@ -20,9 +20,10 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
+      name_lower TEXT NOT NULL,
       pin TEXT NOT NULL,
       created_at TIMESTAMP DEFAULT NOW(),
-      UNIQUE(LOWER(name), pin)
+      UNIQUE(name_lower, pin)
     )
   `;
 
@@ -42,10 +43,11 @@ export async function initDb() {
 
 export async function getUser(name: string, pin: string): Promise<UserData | null> {
   const db = getDb();
+  const nameLower = name.trim().toLowerCase();
 
   const rows = await db`
     SELECT id, name, created_at FROM users
-    WHERE LOWER(name) = LOWER(${name.trim()}) AND pin = ${pin}
+    WHERE name_lower = ${nameLower} AND pin = ${pin}
   `;
 
   if (rows.length === 0) return null;
@@ -75,10 +77,12 @@ export async function getUser(name: string, pin: string): Promise<UserData | nul
 
 export async function createUser(name: string, pin: string): Promise<UserData> {
   const db = getDb();
+  const trimmedName = name.trim();
+  const nameLower = trimmedName.toLowerCase();
 
   const rows = await db`
-    INSERT INTO users (name, pin)
-    VALUES (${name.trim()}, ${pin})
+    INSERT INTO users (name, name_lower, pin)
+    VALUES (${trimmedName}, ${nameLower}, ${pin})
     RETURNING id, name, created_at
   `;
 
@@ -99,9 +103,10 @@ export async function updateUserProgress(
   const db = getDb();
 
   // Get user id
+  const nameLower = name.trim().toLowerCase();
   const userRows = await db`
     SELECT id FROM users
-    WHERE LOWER(name) = LOWER(${name.trim()}) AND pin = ${pin}
+    WHERE name_lower = ${nameLower} AND pin = ${pin}
   `;
 
   if (userRows.length === 0) return null;
