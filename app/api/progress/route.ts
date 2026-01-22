@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserProgress, updateUserProgress } from '@/lib/kv';
+import { getUserProgress, updateUserProgress } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {

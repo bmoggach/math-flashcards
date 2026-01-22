@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUser, createUser } from '@/lib/kv';
+import { getUser, createUser, initDb } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,6 +12,9 @@ export async function POST(request: NextRequest) {
     if (!pin || !/^\d{4}$/.test(pin)) {
       return NextResponse.json({ error: 'PIN must be 4 digits' }, { status: 400 });
     }
+
+    // Ensure tables exist
+    await initDb();
 
     // Try to get existing user
     let user = await getUser(name, pin);

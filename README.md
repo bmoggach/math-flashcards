@@ -15,7 +15,7 @@ A web-based flashcard app for practicing Grade 6 Ontario Math curriculum with na
 - **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
-- **Storage**: Vercel KV
+- **Database**: Neon (Serverless PostgreSQL)
 
 ## Getting Started
 
@@ -27,11 +27,11 @@ cd math-flashcards
 npm install
 ```
 
-### 2. Set Up Vercel KV
+### 2. Set Up Neon Database
 
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Create a new KV store (or use an existing project's store)
-3. Copy the environment variables
+1. Go to [Neon Console](https://console.neon.tech)
+2. Create a new project
+3. Copy the connection string (DATABASE_URL)
 
 ### 3. Configure Environment
 
@@ -39,7 +39,7 @@ npm install
 cp .env.local.example .env.local
 ```
 
-Fill in your Vercel KV credentials in `.env.local`.
+Fill in your Neon DATABASE_URL in `.env.local`.
 
 ### 4. Run Development Server
 
@@ -73,7 +73,7 @@ math-flashcards/
 ├── data/
 │   └── flashcards.ts         # All flashcard content
 ├── lib/
-│   ├── kv.ts                 # Vercel KV helpers
+│   ├── db.ts                 # Neon database helpers
 │   └── types.ts              # TypeScript types
 ```
 
@@ -93,7 +93,7 @@ Based on the 2020 Ontario Mathematics Curriculum for Grade 6:
 
 1. Push your code to GitHub
 2. Import the repository in Vercel
-3. Add a KV store to your project
+3. Add DATABASE_URL environment variable (from Neon)
 4. Deploy!
 
 ## License
