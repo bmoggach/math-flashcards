@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Flashcard from '@/components/Flashcard';
 import ProgressBar from '@/components/ProgressBar';
+import BuyMeCoffee from '@/components/BuyMeCoffee';
 import { Flashcard as FlashcardType, TOPICS } from '@/lib/types';
 
 export default function PracticePage() {
@@ -22,33 +23,23 @@ export default function PracticePage() {
   const topic = TOPICS.find(t => t.id === topicId);
 
   useEffect(() => {
-    const name = sessionStorage.getItem('userName');
-    const pin = sessionStorage.getItem('userPin');
-
-    if (!name || !pin) {
-      router.push('/');
-      return;
-    }
-
-    // Fetch flashcards for this topic and user progress
-    Promise.all([
-      fetch(`/api/flashcards?topic=${topicId}`).then(r => r.json()),
-      fetch(`/api/progress?name=${encodeURIComponent(name)}&pin=${pin}`).then(r => r.json()),
-    ]).then(([cardsRes]) => {
-      if (cardsRes.flashcards) {
-        // Shuffle the cards
-        const shuffled = [...cardsRes.flashcards].sort(() => Math.random() - 0.5);
-        setCards(shuffled);
-      }
-      setLoading(false);
-    }).catch(() => {
-      setLoading(false);
-    });
-  }, [topicId, router]);
+    // Fetch flashcards for this topic
+    fetch(`/api/flashcards?topic=${topicId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.flashcards) {
+          // Shuffle the cards
+          const shuffled = [...data.flashcards].sort(() => Math.random() - 0.5);
+          setCards(shuffled);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+  }, [topicId]);
 
   const handleAnswer = async (correct: boolean) => {
-    const name = sessionStorage.getItem('userName');
-    const pin = sessionStorage.getItem('userPin');
     const currentCard = cards[currentIndex];
 
     setSessionTotal(prev => prev + 1);
@@ -57,14 +48,12 @@ export default function PracticePage() {
     }
 
     // Save progress
-    if (name && pin && currentCard) {
+    if (currentCard) {
       try {
         await fetch('/api/progress', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name,
-            pin,
             cardId: currentCard.id,
             correct,
           }),
@@ -159,6 +148,11 @@ export default function PracticePage() {
             >
               Back to Topics
             </Link>
+          </div>
+
+          {/* Buy Me a Coffee on results page */}
+          <div className="mt-8">
+            <BuyMeCoffee />
           </div>
         </div>
       </div>

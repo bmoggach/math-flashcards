@@ -1,5 +1,5 @@
 import { neon, NeonQueryFunction } from '@neondatabase/serverless';
-import { UserData, CardProgress } from './types';
+import { CardProgress } from './types';
 
 let sql: NeonQueryFunction<false, false> | null = null;
 
@@ -16,14 +16,19 @@ function getDb() {
 export async function initDb() {
   const db = getDb();
 
+  // New users table for Google auth
   await db`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
-      name TEXT NOT NULL,
-      name_lower TEXT NOT NULL,
-      pin TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      name TEXT,
+      google_id TEXT,
+      child_name TEXT,
+      child_birth_year INTEGER,
+      school_name TEXT,
+      onboarded BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMP DEFAULT NOW(),
-      UNIQUE(name_lower, pin)
+      updated_at TIMESTAMP DEFAULT NOW()
     )
   `;
 
@@ -41,21 +46,135 @@ export async function initDb() {
   `;
 }
 
-export async function getUser(name: string, pin: string): Promise<UserData | null> {
+export interface DbUser {
+  id: number;
+  email: string;
+  name: string | null;
+  googleId: string | null;
+  childName: string | null;
+  childBirthYear: number | null;
+  schoolName: string | null;
+  onboarded: boolean;
+  createdAt: Date;
+}
+
+export async function getOrCreateUser(data: {
+  email: string;
+  name: string;
+  googleId: string;
+}): Promise<DbUser> {
   const db = getDb();
-  const nameLower = name.trim().toLowerCase();
+  await initDb();
+
+  // Try to get existing user
+  const existing = await db`
+    SELECT id, email, name, google_id, child_name, child_birth_year, school_name, onboarded, created_at
+    FROM users WHERE email = ${data.email}
+  `;
+
+  if (existing.length > 0) {
+    const row = existing[0];
+    return {
+      id: row.id,
+      email: row.email,
+      name: row.name,
+      googleId: row.google_id,
+      childName: row.child_name,
+      childBirthYear: row.child_birth_year,
+      schoolName: row.school_name,
+      onboarded: row.onboarded,
+      createdAt: row.created_at,
+    };
+  }
+
+  // Create new user
+  const rows = await db`
+    INSERT INTO users (email, name, google_id)
+    VALUES (${data.email}, ${data.name}, ${data.googleId})
+    RETURNING id, email, name, google_id, child_name, child_birth_year, school_name, onboarded, created_at
+  `;
+
+  const row = rows[0];
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    googleId: row.google_id,
+    childName: row.child_name,
+    childBirthYear: row.child_birth_year,
+    schoolName: row.school_name,
+    onboarded: row.onboarded,
+    createdAt: row.created_at,
+  };
+}
+
+export async function getUserById(email: string): Promise<DbUser | null> {
+  const db = getDb();
 
   const rows = await db`
-    SELECT id, name, created_at FROM users
-    WHERE name_lower = ${nameLower} AND pin = ${pin}
+    SELECT id, email, name, google_id, child_name, child_birth_year, school_name, onboarded, created_at
+    FROM users WHERE email = ${email}
   `;
 
   if (rows.length === 0) return null;
 
-  const user = rows[0];
+  const row = rows[0];
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    googleId: row.google_id,
+    childName: row.child_name,
+    childBirthYear: row.child_birth_year,
+    schoolName: row.school_name,
+    onboarded: row.onboarded,
+    createdAt: row.created_at,
+  };
+}
+
+export async function completeOnboarding(
+  email: string,
+  data: {
+    childName: string;
+    childBirthYear: number;
+    schoolName?: string;
+  }
+): Promise<DbUser | null> {
+  const db = getDb();
+
+  const rows = await db`
+    UPDATE users
+    SET child_name = ${data.childName},
+        child_birth_year = ${data.childBirthYear},
+        school_name = ${data.schoolName || null},
+        onboarded = TRUE,
+        updated_at = NOW()
+    WHERE email = ${email}
+    RETURNING id, email, name, google_id, child_name, child_birth_year, school_name, onboarded, created_at
+  `;
+
+  if (rows.length === 0) return null;
+
+  const row = rows[0];
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    googleId: row.google_id,
+    childName: row.child_name,
+    childBirthYear: row.child_birth_year,
+    schoolName: row.school_name,
+    onboarded: row.onboarded,
+    createdAt: row.created_at,
+  };
+}
+
+export async function getUserProgress(userId: number): Promise<Record<string, CardProgress>> {
+  const db = getDb();
+
   const progressRows = await db`
     SELECT card_id, correct, incorrect, last_seen, mastered
-    FROM progress WHERE user_id = ${user.id}
+    FROM progress WHERE user_id = ${userId}
   `;
 
   const progress: Record<string, CardProgress> = {};
@@ -68,52 +187,16 @@ export async function getUser(name: string, pin: string): Promise<UserData | nul
     };
   }
 
-  return {
-    name: user.name,
-    createdAt: user.created_at?.toISOString() || '',
-    progress,
-  };
+  return progress;
 }
 
-export async function createUser(name: string, pin: string): Promise<UserData> {
-  const db = getDb();
-  const trimmedName = name.trim();
-  const nameLower = trimmedName.toLowerCase();
-
-  const rows = await db`
-    INSERT INTO users (name, name_lower, pin)
-    VALUES (${trimmedName}, ${nameLower}, ${pin})
-    RETURNING id, name, created_at
-  `;
-
-  const user = rows[0];
-  return {
-    name: user.name,
-    createdAt: user.created_at?.toISOString() || '',
-    progress: {},
-  };
-}
-
-export async function updateUserProgress(
-  name: string,
-  pin: string,
+export async function updateProgress(
+  userId: number,
   cardId: string,
   correct: boolean
-): Promise<UserData | null> {
+): Promise<void> {
   const db = getDb();
 
-  // Get user id
-  const nameLower = name.trim().toLowerCase();
-  const userRows = await db`
-    SELECT id FROM users
-    WHERE name_lower = ${nameLower} AND pin = ${pin}
-  `;
-
-  if (userRows.length === 0) return null;
-
-  const userId = userRows[0].id;
-
-  // Upsert progress
   await db`
     INSERT INTO progress (user_id, card_id, correct, incorrect, last_seen, mastered)
     VALUES (
@@ -130,10 +213,4 @@ export async function updateUserProgress(
       last_seen = NOW(),
       mastered = (progress.correct + ${correct ? 1 : 0}) >= 3
   `;
-
-  return getUser(name, pin);
-}
-
-export async function getUserProgress(name: string, pin: string): Promise<UserData | null> {
-  return getUser(name, pin);
 }

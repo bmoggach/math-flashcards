@@ -1,55 +1,32 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { auth, signOut } from '@/auth';
+import { redirect } from 'next/navigation';
+import { getUserById, getUserProgress } from '@/lib/db';
+import { TOPICS } from '@/lib/types';
+import { flashcards } from '@/data/flashcards';
 import TopicCard from '@/components/TopicCard';
-import { TOPICS, UserData, Flashcard } from '@/lib/types';
+import BuyMeCoffee from '@/components/BuyMeCoffee';
 
-interface TopicProgress {
-  total: number;
-  mastered: number;
-  attempted: number;
-}
+export default async function DashboardPage() {
+  const session = await auth();
 
-export default function DashboardPage() {
-  const [userName, setUserName] = useState<string>('');
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  if (!session?.user?.email) {
+    redirect('/');
+  }
 
-  useEffect(() => {
-    const name = sessionStorage.getItem('userName');
-    const pin = sessionStorage.getItem('userPin');
+  const user = await getUserById(session.user.email);
 
-    if (!name || !pin) {
-      router.push('/');
-      return;
-    }
+  if (!user) {
+    redirect('/');
+  }
 
-    setUserName(name);
+  if (!user.onboarded) {
+    redirect('/onboarding');
+  }
 
-    // Fetch user data and flashcards
-    Promise.all([
-      fetch(`/api/progress?name=${encodeURIComponent(name)}&pin=${pin}`).then(r => r.json()),
-      fetch('/api/flashcards').then(r => r.json()),
-    ]).then(([userRes, cardsRes]) => {
-      if (userRes.user) {
-        setUserData(userRes.user);
-      }
-      if (cardsRes.flashcards) {
-        setFlashcards(cardsRes.flashcards);
-      }
-      setLoading(false);
-    }).catch(() => {
-      setLoading(false);
-    });
-  }, [router]);
+  const progress = await getUserProgress(user.id);
 
-  const getTopicProgress = (topicId: string): TopicProgress => {
+  const getTopicProgress = (topicId: string) => {
     const topicCards = flashcards.filter(c => c.topic === topicId);
-    const progress = userData?.progress || {};
-
     let mastered = 0;
     let attempted = 0;
 
@@ -68,22 +45,8 @@ export default function DashboardPage() {
     };
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('userName');
-    sessionStorage.removeItem('userPin');
-    router.push('/');
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-2xl text-gray-600">Loading...</div>
-      </div>
-    );
-  }
-
   const totalCards = flashcards.length;
-  const totalMastered = Object.values(userData?.progress || {}).filter(p => p.mastered).length;
+  const totalMastered = Object.values(progress).filter(p => p.mastered).length;
   const overallPercent = totalCards > 0 ? Math.round((totalMastered / totalCards) * 100) : 0;
 
   return (
@@ -93,16 +56,23 @@ export default function DashboardPage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-800">
-              Welcome back, {userName}!
+              Welcome back, {user.childName}!
             </h1>
             <p className="text-gray-500 mt-1">Choose a topic to practice</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-gray-500 hover:text-gray-700 text-sm self-start md:self-auto"
+          <form
+            action={async () => {
+              'use server';
+              await signOut();
+            }}
           >
-            Log out
-          </button>
+            <button
+              type="submit"
+              className="text-gray-500 hover:text-gray-700 text-sm"
+            >
+              Log out
+            </button>
+          </form>
         </div>
 
         {/* Overall Progress */}
@@ -131,6 +101,11 @@ export default function DashboardPage() {
               progress={getTopicProgress(topic.id)}
             />
           ))}
+        </div>
+
+        {/* Buy Me a Coffee */}
+        <div className="mt-12 flex justify-center">
+          <BuyMeCoffee />
         </div>
       </div>
     </div>

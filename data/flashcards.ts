@@ -2,6 +2,251 @@ import { Flashcard } from '@/lib/types';
 
 export const flashcards: Flashcard[] = [
   // ==========================================
+  // MULTIPLICATION & DIVISION
+  // ==========================================
+
+  // Times Tables
+  {
+    id: 'md-mult-1',
+    topic: 'multiplication-division',
+    subtopic: 'times-tables',
+    question: '7 × 8 = ?',
+    answer: '56',
+  },
+  {
+    id: 'md-mult-2',
+    topic: 'multiplication-division',
+    subtopic: 'times-tables',
+    question: '9 × 6 = ?',
+    answer: '54',
+  },
+  {
+    id: 'md-mult-3',
+    topic: 'multiplication-division',
+    subtopic: 'times-tables',
+    question: '12 × 7 = ?',
+    answer: '84',
+  },
+  {
+    id: 'md-mult-4',
+    topic: 'multiplication-division',
+    subtopic: 'times-tables',
+    question: '8 × 9 = ?',
+    answer: '72',
+  },
+  {
+    id: 'md-mult-5',
+    topic: 'multiplication-division',
+    subtopic: 'times-tables',
+    question: '6 × 7 = ?',
+    answer: '42',
+  },
+  {
+    id: 'md-mult-6',
+    topic: 'multiplication-division',
+    subtopic: 'times-tables',
+    question: '11 × 12 = ?',
+    answer: '132',
+  },
+  {
+    id: 'md-mult-7',
+    topic: 'multiplication-division',
+    subtopic: 'times-tables',
+    question: '9 × 9 = ?',
+    answer: '81',
+  },
+  {
+    id: 'md-mult-8',
+    topic: 'multiplication-division',
+    subtopic: 'times-tables',
+    question: '7 × 12 = ?',
+    answer: '84',
+  },
+  {
+    id: 'md-mult-9',
+    topic: 'multiplication-division',
+    subtopic: 'times-tables',
+    question: '8 × 6 = ?',
+    answer: '48',
+  },
+  {
+    id: 'md-mult-10',
+    topic: 'multiplication-division',
+    subtopic: 'times-tables',
+    question: '9 × 7 = ?',
+    answer: '63',
+  },
+
+  // Division Facts
+  {
+    id: 'md-div-1',
+    topic: 'multiplication-division',
+    subtopic: 'division-facts',
+    question: '56 ÷ 8 = ?',
+    answer: '7',
+  },
+  {
+    id: 'md-div-2',
+    topic: 'multiplication-division',
+    subtopic: 'division-facts',
+    question: '72 ÷ 9 = ?',
+    answer: '8',
+  },
+  {
+    id: 'md-div-3',
+    topic: 'multiplication-division',
+    subtopic: 'division-facts',
+    question: '63 ÷ 7 = ?',
+    answer: '9',
+  },
+  {
+    id: 'md-div-4',
+    topic: 'multiplication-division',
+    subtopic: 'division-facts',
+    question: '48 ÷ 6 = ?',
+    answer: '8',
+  },
+  {
+    id: 'md-div-5',
+    topic: 'multiplication-division',
+    subtopic: 'division-facts',
+    question: '81 ÷ 9 = ?',
+    answer: '9',
+  },
+  {
+    id: 'md-div-6',
+    topic: 'multiplication-division',
+    subtopic: 'division-facts',
+    question: '96 ÷ 12 = ?',
+    answer: '8',
+  },
+  {
+    id: 'md-div-7',
+    topic: 'multiplication-division',
+    subtopic: 'division-facts',
+    question: '108 ÷ 9 = ?',
+    answer: '12',
+  },
+  {
+    id: 'md-div-8',
+    topic: 'multiplication-division',
+    subtopic: 'division-facts',
+    question: '144 ÷ 12 = ?',
+    answer: '12',
+  },
+
+  // Multi-digit Multiplication
+  {
+    id: 'md-multi-1',
+    topic: 'multiplication-division',
+    subtopic: 'multi-digit',
+    question: '23 × 4 = ?',
+    answer: '92',
+    hint: '(20 × 4) + (3 × 4)',
+  },
+  {
+    id: 'md-multi-2',
+    topic: 'multiplication-division',
+    subtopic: 'multi-digit',
+    question: '15 × 6 = ?',
+    answer: '90',
+    hint: '(10 × 6) + (5 × 6)',
+  },
+  {
+    id: 'md-multi-3',
+    topic: 'multiplication-division',
+    subtopic: 'multi-digit',
+    question: '34 × 5 = ?',
+    answer: '170',
+  },
+  {
+    id: 'md-multi-4',
+    topic: 'multiplication-division',
+    subtopic: 'multi-digit',
+    question: '25 × 8 = ?',
+    answer: '200',
+  },
+  {
+    id: 'md-multi-5',
+    topic: 'multiplication-division',
+    subtopic: 'multi-digit',
+    question: '16 × 7 = ?',
+    answer: '112',
+  },
+
+  // Long Division
+  {
+    id: 'md-long-1',
+    topic: 'multiplication-division',
+    subtopic: 'long-division',
+    question: '156 ÷ 12 = ?',
+    answer: '13',
+  },
+  {
+    id: 'md-long-2',
+    topic: 'multiplication-division',
+    subtopic: 'long-division',
+    question: '225 ÷ 15 = ?',
+    answer: '15',
+  },
+  {
+    id: 'md-long-3',
+    topic: 'multiplication-division',
+    subtopic: 'long-division',
+    question: '168 ÷ 14 = ?',
+    answer: '12',
+  },
+  {
+    id: 'md-long-4',
+    topic: 'multiplication-division',
+    subtopic: 'long-division',
+    question: '252 ÷ 18 = ?',
+    answer: '14',
+  },
+
+  // Word Problems
+  {
+    id: 'md-word-1',
+    topic: 'multiplication-division',
+    subtopic: 'word-problems',
+    question: 'A baker makes 8 trays of cookies with 12 cookies each. How many cookies total?',
+    answer: '96 cookies',
+    hint: '8 × 12',
+  },
+  {
+    id: 'md-word-2',
+    topic: 'multiplication-division',
+    subtopic: 'word-problems',
+    question: '72 students are divided into 9 equal groups. How many in each group?',
+    answer: '8 students',
+    hint: '72 ÷ 9',
+  },
+  {
+    id: 'md-word-3',
+    topic: 'multiplication-division',
+    subtopic: 'word-problems',
+    question: 'A movie is 2 hours long. How many minutes is that?',
+    answer: '120 minutes',
+    hint: '2 × 60',
+  },
+  {
+    id: 'md-word-4',
+    topic: 'multiplication-division',
+    subtopic: 'word-problems',
+    question: 'If 5 friends share 45 candies equally, how many does each get?',
+    answer: '9 candies',
+    hint: '45 ÷ 5',
+  },
+  {
+    id: 'md-word-5',
+    topic: 'multiplication-division',
+    subtopic: 'word-problems',
+    question: 'A book has 24 chapters. If you read 3 chapters per day, how many days to finish?',
+    answer: '8 days',
+    hint: '24 ÷ 3',
+  },
+
+  // ==========================================
   // NUMBER SENSE
   // ==========================================
 

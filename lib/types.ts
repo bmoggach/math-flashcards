@@ -30,6 +30,13 @@ export interface Topic {
 
 export const TOPICS: Topic[] = [
   {
+    id: 'multiplication-division',
+    name: 'Multiplication & Division',
+    description: 'Times tables, division facts, word problems',
+    icon: '✖️',
+    color: 'bg-red-500',
+  },
+  {
     id: 'number-sense',
     name: 'Number Sense',
     description: 'Fractions, decimals, percentages, integers, ratios',
