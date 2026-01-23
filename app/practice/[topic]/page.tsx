@@ -1,18 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Flashcard from '@/components/Flashcard';
 import ProgressBar from '@/components/ProgressBar';
 import BuyMeCoffee from '@/components/BuyMeCoffee';
 import { Flashcard as FlashcardType, TOPICS } from '@/lib/types';
 
+interface FlashcardsResponse {
+  flashcards?: FlashcardType[];
+}
+
+interface ProgressResumeResponse {
+  nextCardId?: string | null;
+}
+
 export default function PracticePage() {
   const params = useParams();
   const topicId = params.topic as string;
-  const router = useRouter();
-
+  const isNeedsWorkSession = topicId === 'needs-work';
   const [cards, setCards] = useState<FlashcardType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionCorrect, setSessionCorrect] = useState(0);
@@ -20,27 +27,83 @@ export default function PracticePage() {
   const [loading, setLoading] = useState(true);
   const [completed, setCompleted] = useState(false);
 
-  const topic = TOPICS.find(t => t.id === topicId);
+  const topic = isNeedsWorkSession
+    ? {
+        id: 'needs-work',
+        name: 'Needs Work',
+        description: 'Review the cards that need more practice',
+        icon: '🧠',
+        color: 'bg-amber-500',
+      }
+    : TOPICS.find(t => t.id === topicId);
 
   useEffect(() => {
-    // Fetch flashcards for this topic
-    fetch(`/api/flashcards?topic=${topicId}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.flashcards) {
-          // Shuffle the cards
-          const shuffled = [...data.flashcards].sort(() => Math.random() - 0.5);
+    let isActive = true;
+    setLoading(true);
+
+    const loadData = async () => {
+      try {
+        const [cardsResponse, progressResponse] = await Promise.all([
+          isNeedsWorkSession
+            ? fetch('/api/needs-work')
+            : fetch(`/api/flashcards?topic=${topicId}`),
+          isNeedsWorkSession
+            ? Promise.resolve(null)
+            : fetch(`/api/progress?topicId=${topicId}`),
+        ]);
+
+        const cardsData = (await cardsResponse.json()) as FlashcardsResponse;
+        const progressData = progressResponse
+          ? ((await progressResponse.json()) as ProgressResumeResponse)
+          : { nextCardId: null };
+
+        if (!isActive) return;
+
+        if (cardsData.flashcards) {
+          const shuffled = [...cardsData.flashcards].sort(() => Math.random() - 0.5);
           setCards(shuffled);
+
+          const resumeCardId = isNeedsWorkSession ? null : progressData.nextCardId ?? null;
+          if (resumeCardId) {
+            const resumeIndex = shuffled.findIndex(card => card.id === resumeCardId);
+            setCurrentIndex(resumeIndex >= 0 ? resumeIndex : 0);
+          } else {
+            setCurrentIndex(0);
+          }
+        } else {
+          setCards([]);
+          setCurrentIndex(0);
         }
-        setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-      });
-  }, [topicId]);
+      } catch {
+        if (isActive) {
+          setCards([]);
+          setCurrentIndex(0);
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isActive = false;
+    };
+  }, [topicId, isNeedsWorkSession]);
+
+  const advanceCard = () => {
+    if (currentIndex < cards.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+    } else {
+      setCompleted(true);
+    }
+  };
 
   const handleAnswer = async (correct: boolean) => {
     const currentCard = cards[currentIndex];
+    const nextCardId = currentIndex < cards.length - 1 ? cards[currentIndex + 1]?.id : null;
 
     setSessionTotal(prev => prev + 1);
     if (correct) {
@@ -56,6 +119,8 @@ export default function PracticePage() {
           body: JSON.stringify({
             cardId: currentCard.id,
             correct,
+            topicId: currentCard.topic,
+            nextCardId,
           }),
         });
       } catch (err) {
@@ -63,12 +128,15 @@ export default function PracticePage() {
       }
     }
 
-    // Move to next card or complete
-    if (currentIndex < cards.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    } else {
-      setCompleted(true);
-    }
+    advanceCard();
+  };
+
+  const handlePrevious = () => {
+    setCurrentIndex(prev => Math.max(prev - 1, 0));
+  };
+
+  const handleSkip = () => {
+    void handleAnswer(false);
   };
 
   const handleRestart = () => {
@@ -106,7 +174,11 @@ export default function PracticePage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="text-2xl text-gray-600 mb-4">No flashcards available for this topic</div>
+          <div className="text-2xl text-gray-600 mb-4">
+            {isNeedsWorkSession
+              ? 'No needs work cards yet'
+              : 'No flashcards available for this topic'}
+          </div>
           <Link href="/dashboard" className="text-indigo-600 hover:underline">
             Back to Dashboard
           </Link>
@@ -190,7 +262,23 @@ export default function PracticePage() {
         </div>
 
         {/* Flashcard */}
-        <Flashcard card={currentCard} onAnswer={handleAnswer} />
+        <Flashcard key={currentCard.id} card={currentCard} onAnswer={handleAnswer} />
+
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <button
+            onClick={handlePrevious}
+            disabled={currentIndex === 0}
+            className="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:text-gray-800 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <button
+            onClick={handleSkip}
+            className="px-4 py-2 rounded-xl bg-amber-100 text-amber-700 hover:bg-amber-200 font-semibold"
+          >
+            Skip (Needs Work)
+          </button>
+        </div>
 
         {/* Subtopic indicator */}
         <div className="mt-6 text-center text-sm text-gray-400">
