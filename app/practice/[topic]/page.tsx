@@ -19,6 +19,7 @@ interface ProgressResumeResponse {
 export default function PracticePage() {
   const params = useParams();
   const topicId = params.topic as string;
+  const isNeedsWorkSession = topicId === 'needs-work';
   const [cards, setCards] = useState<FlashcardType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionCorrect, setSessionCorrect] = useState(0);
@@ -26,7 +27,15 @@ export default function PracticePage() {
   const [loading, setLoading] = useState(true);
   const [completed, setCompleted] = useState(false);
 
-  const topic = TOPICS.find(t => t.id === topicId);
+  const topic = isNeedsWorkSession
+    ? {
+        id: 'needs-work',
+        name: 'Needs Work',
+        description: 'Review the cards that need more practice',
+        icon: '🧠',
+        color: 'bg-amber-500',
+      }
+    : TOPICS.find(t => t.id === topicId);
 
   useEffect(() => {
     let isActive = true;
@@ -35,12 +44,18 @@ export default function PracticePage() {
     const loadData = async () => {
       try {
         const [cardsResponse, progressResponse] = await Promise.all([
-          fetch(`/api/flashcards?topic=${topicId}`),
-          fetch(`/api/progress?topicId=${topicId}`),
+          isNeedsWorkSession
+            ? fetch('/api/needs-work')
+            : fetch(`/api/flashcards?topic=${topicId}`),
+          isNeedsWorkSession
+            ? Promise.resolve(null)
+            : fetch(`/api/progress?topicId=${topicId}`),
         ]);
 
         const cardsData = (await cardsResponse.json()) as FlashcardsResponse;
-        const progressData = (await progressResponse.json()) as ProgressResumeResponse;
+        const progressData = progressResponse
+          ? ((await progressResponse.json()) as ProgressResumeResponse)
+          : { nextCardId: null };
 
         if (!isActive) return;
 
@@ -48,7 +63,7 @@ export default function PracticePage() {
           const shuffled = [...cardsData.flashcards].sort(() => Math.random() - 0.5);
           setCards(shuffled);
 
-          const resumeCardId = progressData.nextCardId ?? null;
+          const resumeCardId = isNeedsWorkSession ? null : progressData.nextCardId ?? null;
           if (resumeCardId) {
             const resumeIndex = shuffled.findIndex(card => card.id === resumeCardId);
             setCurrentIndex(resumeIndex >= 0 ? resumeIndex : 0);
@@ -76,7 +91,15 @@ export default function PracticePage() {
     return () => {
       isActive = false;
     };
-  }, [topicId]);
+  }, [topicId, isNeedsWorkSession]);
+
+  const advanceCard = () => {
+    if (currentIndex < cards.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+    } else {
+      setCompleted(true);
+    }
+  };
 
   const handleAnswer = async (correct: boolean) => {
     const currentCard = cards[currentIndex];
@@ -105,14 +128,15 @@ export default function PracticePage() {
       }
     }
 
+    advanceCard();
   };
 
-  const handleNext = () => {
-    if (currentIndex < cards.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    } else {
-      setCompleted(true);
-    }
+  const handlePrevious = () => {
+    setCurrentIndex(prev => Math.max(prev - 1, 0));
+  };
+
+  const handleSkip = () => {
+    void handleAnswer(false);
   };
 
   const handleRestart = () => {
@@ -150,7 +174,11 @@ export default function PracticePage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="text-2xl text-gray-600 mb-4">No flashcards available for this topic</div>
+          <div className="text-2xl text-gray-600 mb-4">
+            {isNeedsWorkSession
+              ? 'No needs work cards yet'
+              : 'No flashcards available for this topic'}
+          </div>
           <Link href="/dashboard" className="text-indigo-600 hover:underline">
             Back to Dashboard
           </Link>
@@ -234,12 +262,23 @@ export default function PracticePage() {
         </div>
 
         {/* Flashcard */}
-        <Flashcard
-          key={currentCard.id}
-          card={currentCard}
-          onAnswer={handleAnswer}
-          onNext={handleNext}
-        />
+        <Flashcard key={currentCard.id} card={currentCard} onAnswer={handleAnswer} />
+
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <button
+            onClick={handlePrevious}
+            disabled={currentIndex === 0}
+            className="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:text-gray-800 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <button
+            onClick={handleSkip}
+            className="px-4 py-2 rounded-xl bg-amber-100 text-amber-700 hover:bg-amber-200 font-semibold"
+          >
+            Skip (Needs Work)
+          </button>
+        </div>
 
         {/* Subtopic indicator */}
         <div className="mt-6 text-center text-sm text-gray-400">

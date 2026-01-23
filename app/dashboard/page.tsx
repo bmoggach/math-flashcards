@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getUserById, getUserProgress } from '@/lib/db';
 import { TOPICS } from '@/lib/types';
 import { flashcards } from '@/data/flashcards';
+import Link from 'next/link';
 import TopicCard from '@/components/TopicCard';
 import BuyMeCoffee from '@/components/BuyMeCoffee';
 
@@ -48,6 +49,7 @@ export default async function DashboardPage() {
   const totalCards = flashcards.length;
   const totalMastered = Object.values(progress).filter(p => p.mastered).length;
   const overallPercent = totalCards > 0 ? Math.round((totalMastered / totalCards) * 100) : 0;
+  const needsWorkCount = Object.values(progress).filter(p => p.incorrect > 0).length;
 
   return (
     <div className="min-h-screen p-4 md:p-8">
@@ -61,12 +63,12 @@ export default async function DashboardPage() {
             <p className="text-gray-500 mt-1">Choose a topic to practice</p>
           </div>
           <div className="flex items-center gap-4">
-            <a
+            <Link
               href="/parent"
               className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
             >
               Parent Dashboard
-            </a>
+            </Link>
             <form
               action={async () => {
                 'use server';
@@ -102,6 +104,24 @@ export default async function DashboardPage() {
 
         {/* Topic Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Link
+            href="/practice/needs-work"
+            className="bg-amber-50 border border-amber-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
+          >
+            <div className="text-sm font-semibold text-amber-700 mb-2">Needs Work</div>
+            <div className="text-2xl font-bold text-gray-800 mb-1">
+              {needsWorkCount}
+            </div>
+            <p className="text-sm text-gray-500">
+              Cards flagged for extra practice
+            </p>
+            <div className="mt-4 inline-flex items-center text-sm font-semibold text-amber-700">
+              Practice now
+              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </Link>
           {TOPICS.map(topic => (
             <TopicCard
               key={topic.id}

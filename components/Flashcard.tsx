@@ -6,11 +6,10 @@ import { Flashcard as FlashcardType } from '@/lib/types';
 interface FlashcardProps {
   card: FlashcardType;
   onAnswer: (correct: boolean) => void;
-  onNext: () => void;
   showHint?: boolean;
 }
 
-export default function Flashcard({ card, onAnswer, onNext, showHint = true }: FlashcardProps) {
+export default function Flashcard({ card, onAnswer, showHint = true }: FlashcardProps) {
   const [flipped, setFlipped] = useState(false);
   const [showingHint, setShowingHint] = useState(false);
   const [hasAnswered, setHasAnswered] = useState(false);
@@ -130,14 +129,8 @@ export default function Flashcard({ card, onAnswer, onNext, showHint = true }: F
       )}
       {hasAnswered && (
         <div className="flex flex-col sm:flex-row gap-3 mt-6 justify-center">
-          <button
-            onClick={onNext}
-            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-2xl transition-colors"
-          >
-            Next Card
-          </button>
           <p className="text-sm text-gray-400 self-center">
-            Tap the card to flip back and review.
+            Tap the card to flip back and review, or use Previous to revisit.
           </p>
         </div>
       )}
