@@ -336,6 +336,30 @@ export interface CardAttempt {
   createdAt: string;
 }
 
+export interface AdminUserSummary {
+  id: number;
+  email: string;
+  name: string | null;
+  childName: string | null;
+  onboarded: boolean;
+  createdAt: Date;
+  totalAttempts: number;
+  correctAttempts: number;
+  lastAttemptAt: string | null;
+}
+
+type AdminUserSummaryRow = {
+  id: number;
+  email: string;
+  name: string | null;
+  child_name: string | null;
+  onboarded: boolean;
+  created_at: Date;
+  total_attempts: number | null;
+  correct_attempts: number | null;
+  last_attempt: Date | null;
+};
+
 export async function getUserAttemptStats(userId: number): Promise<CardAttemptSummary[]> {
   const db = getDb();
   await initDb();
@@ -380,5 +404,47 @@ export async function getUserRecentAttempts(
     topicId: row.topic_id,
     correct: row.correct,
     createdAt: row.created_at?.toISOString() || '',
+  }));
+}
+
+export async function getAdminUserSummaries(): Promise<AdminUserSummary[]> {
+  const db = getDb();
+  await initDb();
+
+  const rows = (await db`
+    SELECT
+      users.id,
+      users.email,
+      users.name,
+      users.child_name,
+      users.onboarded,
+      users.created_at,
+      COALESCE(stats.total_attempts, 0)::int AS total_attempts,
+      COALESCE(stats.correct_attempts, 0)::int AS correct_attempts,
+      stats.last_attempt
+    FROM users
+    LEFT JOIN (
+      SELECT
+        user_id,
+        COUNT(*)::int AS total_attempts,
+        SUM(CASE WHEN correct THEN 1 ELSE 0 END)::int AS correct_attempts,
+        MAX(created_at) AS last_attempt
+      FROM card_attempts
+      GROUP BY user_id
+    ) AS stats
+      ON stats.user_id = users.id
+    ORDER BY users.created_at DESC
+  `) as AdminUserSummaryRow[];
+
+  return rows.map(row => ({
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    childName: row.child_name,
+    onboarded: row.onboarded,
+    createdAt: row.created_at,
+    totalAttempts: row.total_attempts ?? 0,
+    correctAttempts: row.correct_attempts ?? 0,
+    lastAttemptAt: row.last_attempt ? row.last_attempt.toISOString() : null,
   }));
 }
