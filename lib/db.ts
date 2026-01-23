@@ -2,6 +2,7 @@ import { neon, NeonQueryFunction } from '@neondatabase/serverless';
 import { CardProgress } from './types';
 
 let sql: NeonQueryFunction<false, false> | null = null;
+let dbInitialized = false;
 
 function getDb() {
   if (!sql) {
@@ -14,6 +15,9 @@ function getDb() {
 }
 
 export async function initDb() {
+  if (dbInitialized) {
+    return;
+  }
   const db = getDb();
 
   // New users table for Google auth
@@ -66,6 +70,8 @@ export async function initDb() {
       UNIQUE(user_id, topic_id)
     )
   `;
+
+  dbInitialized = true;
 }
 
 export interface DbUser {
@@ -80,43 +86,19 @@ export interface DbUser {
   createdAt: Date;
 }
 
-export async function getOrCreateUser(data: {
+type DbUserRow = {
+  id: number;
   email: string;
-  name: string;
-  googleId: string;
-}): Promise<DbUser> {
-  const db = getDb();
-  await initDb();
+  name: string | null;
+  google_id: string | null;
+  child_name: string | null;
+  child_birth_year: number | null;
+  school_name: string | null;
+  onboarded: boolean;
+  created_at: Date;
+};
 
-  // Try to get existing user
-  const existing = await db`
-    SELECT id, email, name, google_id, child_name, child_birth_year, school_name, onboarded, created_at
-    FROM users WHERE email = ${data.email}
-  `;
-
-  if (existing.length > 0) {
-    const row = existing[0];
-    return {
-      id: row.id,
-      email: row.email,
-      name: row.name,
-      googleId: row.google_id,
-      childName: row.child_name,
-      childBirthYear: row.child_birth_year,
-      schoolName: row.school_name,
-      onboarded: row.onboarded,
-      createdAt: row.created_at,
-    };
-  }
-
-  // Create new user
-  const rows = await db`
-    INSERT INTO users (email, name, google_id)
-    VALUES (${data.email}, ${data.name}, ${data.googleId})
-    RETURNING id, email, name, google_id, child_name, child_birth_year, school_name, onboarded, created_at
-  `;
-
-  const row = rows[0];
+function mapUserRow(row: DbUserRow): DbUser {
   return {
     id: row.id,
     email: row.email,
@@ -130,28 +112,46 @@ export async function getOrCreateUser(data: {
   };
 }
 
+export async function getOrCreateUser(data: {
+  email: string;
+  name: string;
+  googleId: string;
+}): Promise<DbUser> {
+  const db = getDb();
+  await initDb();
+
+  // Try to get existing user
+  const existing = (await db`
+    SELECT id, email, name, google_id, child_name, child_birth_year, school_name, onboarded, created_at
+    FROM users WHERE email = ${data.email}
+  `) as DbUserRow[];
+
+  if (existing.length > 0) {
+    return mapUserRow(existing[0]);
+  }
+
+  // Create new user
+  const rows = (await db`
+    INSERT INTO users (email, name, google_id)
+    VALUES (${data.email}, ${data.name}, ${data.googleId})
+    RETURNING id, email, name, google_id, child_name, child_birth_year, school_name, onboarded, created_at
+  `) as DbUserRow[];
+
+  return mapUserRow(rows[0]);
+}
+
 export async function getUserById(email: string): Promise<DbUser | null> {
   const db = getDb();
+  await initDb();
 
-  const rows = await db`
+  const rows = (await db`
     SELECT id, email, name, google_id, child_name, child_birth_year, school_name, onboarded, created_at
     FROM users WHERE email = ${email}
-  `;
+  `) as DbUserRow[];
 
   if (rows.length === 0) return null;
 
-  const row = rows[0];
-  return {
-    id: row.id,
-    email: row.email,
-    name: row.name,
-    googleId: row.google_id,
-    childName: row.child_name,
-    childBirthYear: row.child_birth_year,
-    schoolName: row.school_name,
-    onboarded: row.onboarded,
-    createdAt: row.created_at,
-  };
+  return mapUserRow(rows[0]);
 }
 
 export async function completeOnboarding(
@@ -163,8 +163,9 @@ export async function completeOnboarding(
   }
 ): Promise<DbUser | null> {
   const db = getDb();
+  await initDb();
 
-  const rows = await db`
+  const rows = (await db`
     UPDATE users
     SET child_name = ${data.childName},
         child_birth_year = ${data.childBirthYear},
@@ -173,26 +174,16 @@ export async function completeOnboarding(
         updated_at = NOW()
     WHERE email = ${email}
     RETURNING id, email, name, google_id, child_name, child_birth_year, school_name, onboarded, created_at
-  `;
+  `) as DbUserRow[];
 
   if (rows.length === 0) return null;
 
-  const row = rows[0];
-  return {
-    id: row.id,
-    email: row.email,
-    name: row.name,
-    googleId: row.google_id,
-    childName: row.child_name,
-    childBirthYear: row.child_birth_year,
-    schoolName: row.school_name,
-    onboarded: row.onboarded,
-    createdAt: row.created_at,
-  };
+  return mapUserRow(rows[0]);
 }
 
 export async function getUserProgress(userId: number): Promise<Record<string, CardProgress>> {
   const db = getDb();
+  await initDb();
 
   const progressRows = await db`
     SELECT card_id, correct, incorrect, last_seen, mastered
@@ -214,6 +205,7 @@ export async function getUserProgress(userId: number): Promise<Record<string, Ca
 
 export async function getUserAttemptTotals(userId: number): Promise<{ attempts: number; correct: number }> {
   const db = getDb();
+  await initDb();
 
   const rows = await db`
     SELECT COUNT(*)::int AS attempts,
@@ -231,6 +223,7 @@ export async function getUserAttemptTotals(userId: number): Promise<{ attempts: 
 
 export async function getUserAttemptsToday(userId: number): Promise<number> {
   const db = getDb();
+  await initDb();
 
   const rows = await db`
     SELECT COUNT(*)::int AS attempts
@@ -245,6 +238,7 @@ export async function getUserAttemptsToday(userId: number): Promise<number> {
 
 export async function getUserPracticeDates(userId: number, limit = 30): Promise<string[]> {
   const db = getDb();
+  await initDb();
 
   const rows = await db`
     SELECT DISTINCT DATE(created_at) AS day
