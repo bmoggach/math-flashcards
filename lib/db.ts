@@ -44,6 +44,17 @@ export async function initDb() {
       UNIQUE(user_id, card_id)
     )
   `;
+
+  await db`
+    CREATE TABLE IF NOT EXISTS card_attempts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      card_id TEXT NOT NULL,
+      topic_id TEXT NOT NULL,
+      correct BOOLEAN NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
 }
 
 export interface DbUser {
@@ -193,9 +204,11 @@ export async function getUserProgress(userId: number): Promise<Record<string, Ca
 export async function updateProgress(
   userId: number,
   cardId: string,
-  correct: boolean
+  correct: boolean,
+  topicId: string
 ): Promise<void> {
   const db = getDb();
+  await initDb();
 
   await db`
     INSERT INTO progress (user_id, card_id, correct, incorrect, last_seen, mastered)
@@ -213,4 +226,69 @@ export async function updateProgress(
       last_seen = NOW(),
       mastered = (progress.correct + ${correct ? 1 : 0}) >= 3
   `;
+
+  await db`
+    INSERT INTO card_attempts (user_id, card_id, topic_id, correct, created_at)
+    VALUES (${userId}, ${cardId}, ${topicId}, ${correct}, NOW())
+  `;
+}
+
+export interface CardAttemptSummary {
+  topicId: string;
+  attempts: number;
+  correct: number;
+  uniqueCards: number;
+  lastAttempt: string | null;
+}
+
+export interface CardAttempt {
+  cardId: string;
+  topicId: string;
+  correct: boolean;
+  createdAt: string;
+}
+
+export async function getUserAttemptStats(userId: number): Promise<CardAttemptSummary[]> {
+  const db = getDb();
+
+  const rows = await db`
+    SELECT topic_id,
+           COUNT(*)::int AS attempts,
+           SUM(CASE WHEN correct THEN 1 ELSE 0 END)::int AS correct,
+           COUNT(DISTINCT card_id)::int AS unique_cards,
+           MAX(created_at) AS last_attempt
+    FROM card_attempts
+    WHERE user_id = ${userId}
+    GROUP BY topic_id
+  `;
+
+  return rows.map(row => ({
+    topicId: row.topic_id,
+    attempts: row.attempts,
+    correct: row.correct,
+    uniqueCards: row.unique_cards,
+    lastAttempt: row.last_attempt?.toISOString() || null,
+  }));
+}
+
+export async function getUserRecentAttempts(
+  userId: number,
+  limit = 10
+): Promise<CardAttempt[]> {
+  const db = getDb();
+
+  const rows = await db`
+    SELECT card_id, topic_id, correct, created_at
+    FROM card_attempts
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `;
+
+  return rows.map(row => ({
+    cardId: row.card_id,
+    topicId: row.topic_id,
+    correct: row.correct,
+    createdAt: row.created_at?.toISOString() || '',
+  }));
 }

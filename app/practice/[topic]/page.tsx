@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Flashcard from '@/components/Flashcard';
 import ProgressBar from '@/components/ProgressBar';
@@ -11,26 +11,51 @@ import { Flashcard as FlashcardType, TOPICS } from '@/lib/types';
 export default function PracticePage() {
   const params = useParams();
   const topicId = params.topic as string;
-  const router = useRouter();
-
   const [cards, setCards] = useState<FlashcardType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionCorrect, setSessionCorrect] = useState(0);
   const [sessionTotal, setSessionTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [completed, setCompleted] = useState(false);
+  const [resumeCardId, setResumeCardId] = useState<string | null>(null);
 
   const topic = TOPICS.find(t => t.id === topicId);
 
   useEffect(() => {
     // Fetch flashcards for this topic
-    fetch(`/api/flashcards?topic=${topicId}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.flashcards) {
-          // Shuffle the cards
-          const shuffled = [...data.flashcards].sort(() => Math.random() - 0.5);
+    Promise.all([
+      fetch(`/api/flashcards?topic=${topicId}`).then(r => r.json()),
+      fetch('/api/progress').then(r => r.json()).catch(() => ({ progress: {} })),
+    ])
+      .then(([flashcardData, progressData]) => {
+        if (flashcardData.flashcards) {
+          const shuffled = [...flashcardData.flashcards].sort(() => Math.random() - 0.5);
           setCards(shuffled);
+
+          const progress = progressData?.progress ?? {};
+          const topicCards = flashcardData.flashcards.filter(
+            (card: FlashcardType) => card.topic === topicId
+          );
+
+          const mostRecent = topicCards.reduce<{ id: string; lastSeen: string } | null>(
+            (latest, card) => {
+              const cardProgress = progress[card.id];
+              if (!cardProgress?.lastSeen) return latest;
+              if (!latest) return { id: card.id, lastSeen: cardProgress.lastSeen };
+              return new Date(cardProgress.lastSeen) > new Date(latest.lastSeen)
+                ? { id: card.id, lastSeen: cardProgress.lastSeen }
+                : latest;
+            },
+            null
+          );
+
+          if (mostRecent) {
+            const resumeIndex = shuffled.findIndex(card => card.id === mostRecent.id);
+            if (resumeIndex >= 0) {
+              setCurrentIndex(resumeIndex);
+              setResumeCardId(mostRecent.id);
+            }
+          }
         }
         setLoading(false);
       })
@@ -56,6 +81,7 @@ export default function PracticePage() {
           body: JSON.stringify({
             cardId: currentCard.id,
             correct,
+            topicId: currentCard.topic,
           }),
         });
       } catch (err) {
@@ -187,6 +213,9 @@ export default function PracticePage() {
             total={cards.length}
             correct={sessionCorrect}
           />
+          {resumeCardId ? (
+            <p className="text-xs text-gray-500 mt-2">Resumed from your last practice session.</p>
+          ) : null}
         </div>
 
         {/* Flashcard */}
