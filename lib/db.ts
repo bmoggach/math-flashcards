@@ -86,7 +86,7 @@ export interface DbUser {
   createdAt: Date;
 }
 
-function mapUserRow(row: {
+type DbUserRow = {
   id: number;
   email: string;
   name: string | null;
@@ -96,7 +96,9 @@ function mapUserRow(row: {
   school_name: string | null;
   onboarded: boolean;
   created_at: Date;
-}): DbUser {
+};
+
+function mapUserRow(row: DbUserRow): DbUser {
   return {
     id: row.id,
     email: row.email,
@@ -119,21 +121,21 @@ export async function getOrCreateUser(data: {
   await initDb();
 
   // Try to get existing user
-  const existing = await db`
+  const existing = (await db`
     SELECT id, email, name, google_id, child_name, child_birth_year, school_name, onboarded, created_at
     FROM users WHERE email = ${data.email}
-  `;
+  `) as DbUserRow[];
 
   if (existing.length > 0) {
     return mapUserRow(existing[0]);
   }
 
   // Create new user
-  const rows = await db`
+  const rows = (await db`
     INSERT INTO users (email, name, google_id)
     VALUES (${data.email}, ${data.name}, ${data.googleId})
     RETURNING id, email, name, google_id, child_name, child_birth_year, school_name, onboarded, created_at
-  `;
+  `) as DbUserRow[];
 
   return mapUserRow(rows[0]);
 }
@@ -142,10 +144,10 @@ export async function getUserById(email: string): Promise<DbUser | null> {
   const db = getDb();
   await initDb();
 
-  const rows = await db`
+  const rows = (await db`
     SELECT id, email, name, google_id, child_name, child_birth_year, school_name, onboarded, created_at
     FROM users WHERE email = ${email}
-  `;
+  `) as DbUserRow[];
 
   if (rows.length === 0) return null;
 
@@ -163,7 +165,7 @@ export async function completeOnboarding(
   const db = getDb();
   await initDb();
 
-  const rows = await db`
+  const rows = (await db`
     UPDATE users
     SET child_name = ${data.childName},
         child_birth_year = ${data.childBirthYear},
@@ -172,7 +174,7 @@ export async function completeOnboarding(
         updated_at = NOW()
     WHERE email = ${email}
     RETURNING id, email, name, google_id, child_name, child_birth_year, school_name, onboarded, created_at
-  `;
+  `) as DbUserRow[];
 
   if (rows.length === 0) return null;
 
