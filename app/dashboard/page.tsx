@@ -34,6 +34,9 @@ export default async function DashboardPage() {
     redirect('/onboarding');
   }
 
+  const adminEmailList = process.env.ADMIN_EMAILS?.split(',').map(email => email.trim()).filter(Boolean) ?? [];
+  const isAdmin = adminEmailList.includes(session.user.email);
+
   const [progress, attemptsToday, attemptTotals, practiceDates] = await Promise.all([
     getUserProgress(user.id),
     getUserAttemptsToday(user.id),
@@ -134,6 +137,14 @@ export default async function DashboardPage() {
             >
               Parent Dashboard
             </Link>
+            {isAdmin ? (
+              <Link
+                href="/admin"
+                className="text-sm font-semibold text-emerald-600 hover:text-emerald-700"
+              >
+                Admin Dashboard
+              </Link>
+            ) : null}
             <form
               action={async () => {
                 'use server';
