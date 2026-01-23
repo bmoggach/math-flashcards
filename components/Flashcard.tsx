@@ -13,7 +13,6 @@ export default function Flashcard({ card, onAnswer, showHint = true }: Flashcard
   const [flipped, setFlipped] = useState(false);
   const [showingHint, setShowingHint] = useState(false);
   const [hasAnswered, setHasAnswered] = useState(false);
-  const [markedCorrect, setMarkedCorrect] = useState<boolean | null>(null);
 
   const handleFlip = () => {
     if (!flipped) {
@@ -27,7 +26,6 @@ export default function Flashcard({ card, onAnswer, showHint = true }: Flashcard
 
   const handleAnswer = (correct: boolean) => {
     setHasAnswered(true);
-    setMarkedCorrect(correct);
     onAnswer(correct);
   };
 
@@ -76,17 +74,6 @@ export default function Flashcard({ card, onAnswer, showHint = true }: Flashcard
                 Hint: {card.hint}
               </div>
             )}
-            {hasAnswered && markedCorrect !== null && (
-              <div
-                className={`mt-6 text-sm font-semibold px-4 py-2 rounded-xl ${
-                  markedCorrect
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-rose-100 text-rose-700'
-                }`}
-              >
-                {markedCorrect ? 'Marked: Got it' : 'Marked: Needs work'}
-              </div>
-            )}
             <div className="absolute bottom-6 text-sm text-gray-400">
               {flipped ? 'Tap to return (after marking)' : 'Tap to reveal answer'}
             </div>
@@ -130,7 +117,7 @@ export default function Flashcard({ card, onAnswer, showHint = true }: Flashcard
       {hasAnswered && (
         <div className="flex flex-col sm:flex-row gap-3 mt-6 justify-center">
           <p className="text-sm text-gray-400 self-center">
-            Tap the card to flip back and review, or use Previous to revisit.
+            Use Previous to revisit the last card.
           </p>
         </div>
       )}

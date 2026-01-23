@@ -1,10 +1,10 @@
 # Math Flashcards - Grade 6 Ontario Curriculum
 
-A web-based flashcard app for practicing Grade 6 Ontario Math curriculum with name+PIN authentication and progress tracking.
+A web-based flashcard app for practicing Grade 6 Ontario Math curriculum with Google authentication and progress tracking.
 
 ## Features
 
-- **Simple Login**: Enter name + 4-digit PIN (creates account automatically if new)
+- **Google Login**: Sign in with Google OAuth
 - **5 Math Topics**: Number Sense, Algebra, Measurement, Geometry, Data & Probability
 - **100+ Flashcards**: Covering fractions, decimals, percentages, BEDMAS, area, volume, coordinates, and more
 - **Progress Tracking**: See your mastery level for each topic
@@ -39,7 +39,27 @@ npm install
 cp .env.local.example .env.local
 ```
 
-Fill in your Neon DATABASE_URL in `.env.local`.
+Fill in your Neon DATABASE_URL in `.env.local`. You will also need to configure Google OAuth and Auth.js secrets:
+
+```bash
+# Generate a random secret for Auth.js (run once)
+openssl rand -base64 32
+```
+
+Then set the following values in `.env.local`:
+
+```
+AUTH_SECRET=<output-from-openssl>
+AUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=<from-google-console>
+GOOGLE_CLIENT_SECRET=<from-google-console>
+```
+
+In the Google Cloud Console, set the authorized redirect URI to:
+
+```
+http://localhost:3000/api/auth/callback/google
+```
 
 ### 4. Run Development Server
 
@@ -61,7 +81,6 @@ math-flashcards/
 │   │   └── [topic]/
 │   │       └── page.tsx      # Flashcard practice
 │   ├── api/
-│   │   ├── auth/route.ts     # Login/create user
 │   │   ├── progress/route.ts # Save/load progress
 │   │   └── flashcards/route.ts
 │   ├── layout.tsx
@@ -93,8 +112,17 @@ Based on the 2020 Ontario Mathematics Curriculum for Grade 6:
 
 1. Push your code to GitHub
 2. Import the repository in Vercel
-3. Add DATABASE_URL environment variable (from Neon)
-4. Deploy!
+3. Add the following environment variables in Vercel:
+   - `DATABASE_URL`
+   - `AUTH_SECRET` (generate once with `openssl rand -base64 32`)
+   - `AUTH_URL` (set to your production URL, e.g. `https://your-app.vercel.app`)
+   - `GOOGLE_CLIENT_ID`
+   - `GOOGLE_CLIENT_SECRET`
+4. In Google Cloud Console, add the production redirect URI:
+   ```
+   https://your-app.vercel.app/api/auth/callback/google
+   ```
+5. Deploy!
 
 ## License
 

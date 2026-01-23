@@ -6,15 +6,7 @@ import Link from 'next/link';
 import Flashcard from '@/components/Flashcard';
 import ProgressBar from '@/components/ProgressBar';
 import BuyMeCoffee from '@/components/BuyMeCoffee';
-import { CardProgress, Flashcard as FlashcardType, TOPICS } from '@/lib/types';
-
-interface FlashcardsResponse {
-  flashcards?: FlashcardType[];
-}
-
-interface ProgressResponse {
-  progress?: Record<string, CardProgress>;
-}
+import { Flashcard as FlashcardType, TOPICS } from '@/lib/types';
 
 interface FlashcardsResponse {
   flashcards?: FlashcardType[];
@@ -39,6 +31,7 @@ export default function PracticePage() {
   const [sessionTotal, setSessionTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [completed, setCompleted] = useState(false);
+  const [lastResult, setLastResult] = useState<{ correct: boolean; label: string } | null>(null);
 
   const topic = isNeedsWorkSession
     ? {
@@ -58,11 +51,11 @@ export default function PracticePage() {
       try {
         const [cardsResponse, progressResponse] = await Promise.all([
           isNeedsWorkSession
-            ? fetch('/api/needs-work')
+            ? fetch('/api/needs-work', { credentials: 'include' })
             : fetch(`/api/flashcards?topic=${topicId}`),
           isNeedsWorkSession
             ? Promise.resolve(null)
-            : fetch(`/api/progress?topicId=${topicId}`),
+            : fetch(`/api/progress?topicId=${topicId}`, { credentials: 'include' }),
         ]);
 
         const cardsData = (await cardsResponse.json()) as FlashcardsResponse;
@@ -107,6 +100,15 @@ export default function PracticePage() {
     };
   }, [topicId, isNeedsWorkSession, maxCards]);
 
+  useEffect(() => {
+    if (!lastResult) return;
+    const timeout = setTimeout(() => {
+      setLastResult(null);
+    }, 1500);
+
+    return () => clearTimeout(timeout);
+  }, [lastResult]);
+
   const advanceCard = () => {
     if (currentIndex < cards.length - 1) {
       setCurrentIndex(prev => prev + 1);
@@ -123,6 +125,7 @@ export default function PracticePage() {
     if (correct) {
       setSessionCorrect(prev => prev + 1);
     }
+    setLastResult({ correct, label: correct ? 'Got it!' : 'Needs work' });
 
     // Save progress
     if (currentCard) {
@@ -130,6 +133,7 @@ export default function PracticePage() {
         await fetch('/api/progress', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             cardId: currentCard.id,
             correct,
@@ -280,6 +284,19 @@ export default function PracticePage() {
             total={cards.length}
             correct={sessionCorrect}
           />
+          {lastResult && (
+            <div className="mt-3 flex items-center justify-center">
+              <span
+                className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                  lastResult.correct
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-rose-100 text-rose-700'
+                }`}
+              >
+                Marked: {lastResult.label}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Flashcard */}

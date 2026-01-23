@@ -100,25 +100,6 @@ export default async function DashboardPage() {
     },
   ];
 
-  const avatarItems = [
-    { name: 'Explorer Hat', icon: '🎩', unlocked: totalMastered >= 5 },
-    { name: 'Math Cape', icon: '🦸', unlocked: totalMastered >= 12 },
-    { name: 'Galaxy Backpack', icon: '🎒', unlocked: totalMastered >= 20 },
-  ];
-
-  const dailyPowerUpOptions = [
-    { name: 'Double Points', description: 'Next 3 correct answers count double.', icon: '✨' },
-    { name: 'Focus Shield', description: 'Pause timer once in a mini-game.', icon: '🛡️' },
-    { name: 'Hint Reveal', description: 'Reveal one step on a tricky card.', icon: '💡' },
-  ];
-  const dailyPowerUp = dailyPowerUpOptions[today.getUTCDate() % dailyPowerUpOptions.length];
-
-  const powerUps = [
-    { name: 'Hint Token', description: 'Reveal a hint on one card.', icon: '💡', count: Math.max(1, Math.floor(streakDays / 2)) },
-    { name: dailyPowerUp.name, description: dailyPowerUp.description, icon: dailyPowerUp.icon, count: 1, isDaily: true },
-    { name: 'Shuffle Boost', description: 'Shuffle tough cards in a session.', icon: '🔀', count: Math.max(1, Math.floor(needsWorkCount / 3)) },
-  ];
-
   const featuredTopic = TOPICS[0];
   const miniGames = [
     {
@@ -212,8 +193,6 @@ export default async function DashboardPage() {
             dailyGoalTarget={DAILY_GOAL_TARGET}
             attemptsToday={attemptsToday}
             achievements={achievements}
-            avatarItems={avatarItems}
-            powerUps={powerUps}
             miniGames={miniGames}
           />
         </div>
