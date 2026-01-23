@@ -1,11 +1,21 @@
 import { auth, signOut } from '@/auth';
 import { redirect } from 'next/navigation';
-import { getUserById, getUserProgress } from '@/lib/db';
+import {
+  getUserAttemptsToday,
+  getUserAttemptTotals,
+  getUserById,
+  getUserPracticeDates,
+  getUserProgress,
+} from '@/lib/db';
 import { TOPICS } from '@/lib/types';
 import { flashcards } from '@/data/flashcards';
 import Link from 'next/link';
 import TopicCard from '@/components/TopicCard';
 import BuyMeCoffee from '@/components/BuyMeCoffee';
+import ExtraPracticeModule from '@/components/ExtraPracticeModule';
+import FunLearningHub from '@/components/FunLearningHub';
+
+const DAILY_GOAL_TARGET = 10;
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -24,7 +34,12 @@ export default async function DashboardPage() {
     redirect('/onboarding');
   }
 
-  const progress = await getUserProgress(user.id);
+  const [progress, attemptsToday, attemptTotals, practiceDates] = await Promise.all([
+    getUserProgress(user.id),
+    getUserAttemptsToday(user.id),
+    getUserAttemptTotals(user.id),
+    getUserPracticeDates(user.id, 30),
+  ]);
 
   const getTopicProgress = (topicId: string) => {
     const topicCards = flashcards.filter(c => c.topic === topicId);
@@ -50,6 +65,75 @@ export default async function DashboardPage() {
   const totalMastered = Object.values(progress).filter(p => p.mastered).length;
   const overallPercent = totalCards > 0 ? Math.round((totalMastered / totalCards) * 100) : 0;
   const needsWorkCount = Object.values(progress).filter(p => p.incorrect > 0).length;
+  const accuracy = attemptTotals.attempts > 0
+    ? Math.round((attemptTotals.correct / attemptTotals.attempts) * 100)
+    : 0;
+
+  const practiceDateSet = new Set(practiceDates);
+  const today = new Date();
+  let streakDays = 0;
+  for (let offset = 0; offset < 365; offset++) {
+    const date = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - offset));
+    const dateKey = date.toISOString().slice(0, 10);
+    if (practiceDateSet.has(dateKey)) {
+      streakDays += 1;
+    } else {
+      break;
+    }
+  }
+
+  const achievements = [
+    {
+      title: 'Warm-up Wizard',
+      description: 'Answer 10 questions',
+      unlocked: attemptTotals.attempts >= 10,
+    },
+    {
+      title: 'Accuracy Ace',
+      description: 'Reach 80% accuracy',
+      unlocked: attemptTotals.attempts >= 20 && accuracy >= 80,
+    },
+    {
+      title: 'Unit Hero',
+      description: 'Master 15 cards',
+      unlocked: totalMastered >= 15,
+    },
+  ];
+
+  const avatarItems = [
+    { name: 'Explorer Hat', icon: '🎩', unlocked: totalMastered >= 5 },
+    { name: 'Math Cape', icon: '🦸', unlocked: totalMastered >= 12 },
+    { name: 'Galaxy Backpack', icon: '🎒', unlocked: totalMastered >= 20 },
+  ];
+
+  const dailyPowerUpOptions = [
+    { name: 'Double Points', description: 'Next 3 correct answers count double.', icon: '✨' },
+    { name: 'Focus Shield', description: 'Pause timer once in a mini-game.', icon: '🛡️' },
+    { name: 'Hint Reveal', description: 'Reveal one step on a tricky card.', icon: '💡' },
+  ];
+  const dailyPowerUp = dailyPowerUpOptions[today.getUTCDate() % dailyPowerUpOptions.length];
+
+  const powerUps = [
+    { name: 'Hint Token', description: 'Reveal a hint on one card.', icon: '💡', count: Math.max(1, Math.floor(streakDays / 2)) },
+    { name: dailyPowerUp.name, description: dailyPowerUp.description, icon: dailyPowerUp.icon, count: 1, isDaily: true },
+    { name: 'Shuffle Boost', description: 'Shuffle tough cards in a session.', icon: '🔀', count: Math.max(1, Math.floor(needsWorkCount / 3)) },
+  ];
+
+  const featuredTopic = TOPICS[0];
+  const miniGames = [
+    {
+      name: 'Lightning Round',
+      description: '10 quick questions from needs work.',
+      href: '/practice/needs-work?mode=lightning',
+      icon: '⚡',
+    },
+    {
+      name: 'Unit Sprint',
+      description: `15 fast cards from ${featuredTopic.name}.`,
+      href: `/practice/${featuredTopic.id}?mode=sprint`,
+      icon: '🏁',
+    },
+  ];
 
   return (
     <div className="min-h-screen p-4 md:p-8">
@@ -102,26 +186,45 @@ export default async function DashboardPage() {
           </p>
         </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)] gap-6 mb-10">
+          <ExtraPracticeModule needsWorkCount={needsWorkCount} />
+          <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Keep Going</p>
+              <h2 className="text-2xl font-bold text-gray-800 mt-2">Daily Practice Tip</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                Short, steady practice builds confidence. Try one unit a day and finish with extra practice.
+              </p>
+            </div>
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-gray-500">
+                Last mastered cards
+                <div className="text-lg font-semibold text-gray-800">{totalMastered}</div>
+              </div>
+              <div className="text-3xl">✨</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-10">
+          <FunLearningHub
+            streakDays={streakDays}
+            dailyGoalTarget={DAILY_GOAL_TARGET}
+            attemptsToday={attemptsToday}
+            achievements={achievements}
+            avatarItems={avatarItems}
+            powerUps={powerUps}
+            miniGames={miniGames}
+          />
+        </div>
+
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-800">Units</h2>
+          <p className="text-sm text-gray-500">Keep working through each unit in order.</p>
+        </div>
+
         {/* Topic Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Link
-            href="/practice/needs-work"
-            className="bg-amber-50 border border-amber-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
-          >
-            <div className="text-sm font-semibold text-amber-700 mb-2">Needs Work</div>
-            <div className="text-2xl font-bold text-gray-800 mb-1">
-              {needsWorkCount}
-            </div>
-            <p className="text-sm text-gray-500">
-              Cards flagged for extra practice
-            </p>
-            <div className="mt-4 inline-flex items-center text-sm font-semibold text-amber-700">
-              Practice now
-              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
           {TOPICS.map(topic => (
             <TopicCard
               key={topic.id}
