@@ -6,20 +6,6 @@ interface Achievement {
   unlocked: boolean;
 }
 
-interface AvatarItem {
-  name: string;
-  unlocked: boolean;
-  icon: string;
-}
-
-interface PowerUp {
-  name: string;
-  description: string;
-  count: number;
-  icon: string;
-  isDaily?: boolean;
-}
-
 interface MiniGame {
   name: string;
   description: string;
@@ -32,8 +18,6 @@ interface FunLearningHubProps {
   dailyGoalTarget: number;
   attemptsToday: number;
   achievements: Achievement[];
-  avatarItems: AvatarItem[];
-  powerUps: PowerUp[];
   miniGames: MiniGame[];
 }
 
@@ -42,8 +26,6 @@ export default function FunLearningHub({
   dailyGoalTarget,
   attemptsToday,
   achievements,
-  avatarItems,
-  powerUps,
   miniGames,
 }: FunLearningHubProps) {
   const dailyProgress = Math.min(attemptsToday, dailyGoalTarget);
@@ -91,15 +73,15 @@ export default function FunLearningHub({
           <p className="mt-2 text-xs text-gray-500">Tip: A 10-minute streak beats a 1-hour marathon.</p>
         </div>
 
-        <div className="bg-emerald-50 rounded-2xl p-5">
+        <div className="bg-emerald-50 rounded-2xl p-5 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-gray-800">Badges & Achievements</h3>
-              <p className="text-sm text-gray-600">Celebrate progress with collectible badges.</p>
+              <h3 className="text-lg font-semibold text-gray-800">Highlights</h3>
+              <p className="text-sm text-gray-600">Achievements and quick-play modes in one spot.</p>
             </div>
             <div className="text-3xl">🏅</div>
           </div>
-          <ul className="mt-4 space-y-2">
+          <ul className="space-y-2">
             {achievements.map(achievement => (
               <li
                 key={achievement.title}
@@ -121,63 +103,7 @@ export default function FunLearningHub({
               </li>
             ))}
           </ul>
-        </div>
-
-        <div className="bg-amber-50 rounded-2xl p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">Avatar Builder</h3>
-              <p className="text-sm text-gray-600">Unlock fun gear as you master cards.</p>
-            </div>
-            <div className="text-3xl">🧑‍🚀</div>
-          </div>
-          <div className="mt-4 flex items-center gap-4">
-            <div className="h-20 w-20 rounded-full bg-white flex items-center justify-center text-4xl">
-              😄
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {avatarItems.map(item => (
-                <span
-                  key={item.name}
-                  className={`text-xs font-semibold px-3 py-1 rounded-full border ${
-                    item.unlocked
-                      ? 'border-amber-300 bg-white text-amber-800'
-                      : 'border-gray-200 bg-gray-100 text-gray-400'
-                  }`}
-                >
-                  {item.icon} {item.name}
-                </span>
-              ))}
-            </div>
-          </div>
-          <p className="mt-3 text-xs text-gray-500">New items unlock with every mastered unit.</p>
-        </div>
-
-        <div className="bg-purple-50 rounded-2xl p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">Power-Ups & Mini-Games</h3>
-              <p className="text-sm text-gray-600">Quick boosts and playful modes.</p>
-            </div>
-            <div className="text-3xl">⚡</div>
-          </div>
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {powerUps.map(powerUp => (
-              <div key={powerUp.name} className="rounded-xl bg-white/80 px-3 py-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-gray-800">
-                    {powerUp.icon} {powerUp.name}
-                  </span>
-                  <span className="text-xs font-semibold text-purple-700">x{powerUp.count}</span>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">{powerUp.description}</p>
-                {powerUp.isDaily ? (
-                  <p className="text-[10px] text-purple-600 font-semibold mt-1">Daily random power-up</p>
-                ) : null}
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 space-y-2">
+          <div className="pt-2 space-y-2">
             {miniGames.map(game => (
               <Link
                 key={game.name}
@@ -188,7 +114,7 @@ export default function FunLearningHub({
                   {game.icon} {game.name}
                   <span className="block text-xs font-normal text-gray-500">{game.description}</span>
                 </span>
-                <span className="text-xs font-semibold text-purple-600">Play</span>
+                <span className="text-xs font-semibold text-emerald-700">Play</span>
               </Link>
             ))}
           </div>
