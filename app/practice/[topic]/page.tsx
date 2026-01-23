@@ -6,7 +6,15 @@ import Link from 'next/link';
 import Flashcard from '@/components/Flashcard';
 import ProgressBar from '@/components/ProgressBar';
 import BuyMeCoffee from '@/components/BuyMeCoffee';
-import { Flashcard as FlashcardType, TOPICS } from '@/lib/types';
+import { CardProgress, Flashcard as FlashcardType, TOPICS } from '@/lib/types';
+
+interface FlashcardsResponse {
+  flashcards?: FlashcardType[];
+}
+
+interface ProgressResponse {
+  progress?: Record<string, CardProgress>;
+}
 
 interface FlashcardsResponse {
   flashcards?: FlashcardType[];
