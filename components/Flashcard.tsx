@@ -6,22 +6,29 @@ import { Flashcard as FlashcardType } from '@/lib/types';
 interface FlashcardProps {
   card: FlashcardType;
   onAnswer: (correct: boolean) => void;
+  onNext: () => void;
   showHint?: boolean;
 }
 
-export default function Flashcard({ card, onAnswer, showHint = true }: FlashcardProps) {
+export default function Flashcard({ card, onAnswer, onNext, showHint = true }: FlashcardProps) {
   const [flipped, setFlipped] = useState(false);
   const [showingHint, setShowingHint] = useState(false);
+  const [hasAnswered, setHasAnswered] = useState(false);
+  const [markedCorrect, setMarkedCorrect] = useState<boolean | null>(null);
 
   const handleFlip = () => {
     if (!flipped) {
       setFlipped(true);
+      return;
+    }
+    if (hasAnswered) {
+      setFlipped(false);
     }
   };
 
   const handleAnswer = (correct: boolean) => {
-    setFlipped(false);
-    setShowingHint(false);
+    setHasAnswered(true);
+    setMarkedCorrect(correct);
     onAnswer(correct);
   };
 
@@ -70,8 +77,19 @@ export default function Flashcard({ card, onAnswer, showHint = true }: Flashcard
                 Hint: {card.hint}
               </div>
             )}
+            {hasAnswered && markedCorrect !== null && (
+              <div
+                className={`mt-6 text-sm font-semibold px-4 py-2 rounded-xl ${
+                  markedCorrect
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-rose-100 text-rose-700'
+                }`}
+              >
+                {markedCorrect ? 'Marked: Got it' : 'Marked: Needs work'}
+              </div>
+            )}
             <div className="absolute bottom-6 text-sm text-gray-400">
-              Tap to reveal answer
+              {flipped ? 'Tap to return (after marking)' : 'Tap to reveal answer'}
             </div>
           </div>
 
@@ -94,7 +112,7 @@ export default function Flashcard({ card, onAnswer, showHint = true }: Flashcard
       </div>
 
       {/* Answer Buttons */}
-      {flipped && (
+      {flipped && !hasAnswered && (
         <div className="flex gap-4 mt-6 justify-center">
           <button
             onClick={() => handleAnswer(false)}
@@ -108,6 +126,19 @@ export default function Flashcard({ card, onAnswer, showHint = true }: Flashcard
           >
             Got It!
           </button>
+        </div>
+      )}
+      {hasAnswered && (
+        <div className="flex flex-col sm:flex-row gap-3 mt-6 justify-center">
+          <button
+            onClick={onNext}
+            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-2xl transition-colors"
+          >
+            Next Card
+          </button>
+          <p className="text-sm text-gray-400 self-center">
+            Tap the card to flip back and review.
+          </p>
         </div>
       )}
     </div>

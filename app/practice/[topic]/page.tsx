@@ -1,18 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Flashcard from '@/components/Flashcard';
 import ProgressBar from '@/components/ProgressBar';
 import BuyMeCoffee from '@/components/BuyMeCoffee';
 import { Flashcard as FlashcardType, TOPICS } from '@/lib/types';
 
+interface FlashcardsResponse {
+  flashcards?: FlashcardType[];
+}
+
+interface ProgressResumeResponse {
+  nextCardId?: string | null;
+}
+
 export default function PracticePage() {
   const params = useParams();
   const topicId = params.topic as string;
-  const router = useRouter();
-
   const [cards, setCards] = useState<FlashcardType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionCorrect, setSessionCorrect] = useState(0);
@@ -23,24 +29,58 @@ export default function PracticePage() {
   const topic = TOPICS.find(t => t.id === topicId);
 
   useEffect(() => {
-    // Fetch flashcards for this topic
-    fetch(`/api/flashcards?topic=${topicId}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.flashcards) {
-          // Shuffle the cards
-          const shuffled = [...data.flashcards].sort(() => Math.random() - 0.5);
+    let isActive = true;
+    setLoading(true);
+
+    const loadData = async () => {
+      try {
+        const [cardsResponse, progressResponse] = await Promise.all([
+          fetch(`/api/flashcards?topic=${topicId}`),
+          fetch(`/api/progress?topicId=${topicId}`),
+        ]);
+
+        const cardsData = (await cardsResponse.json()) as FlashcardsResponse;
+        const progressData = (await progressResponse.json()) as ProgressResumeResponse;
+
+        if (!isActive) return;
+
+        if (cardsData.flashcards) {
+          const shuffled = [...cardsData.flashcards].sort(() => Math.random() - 0.5);
           setCards(shuffled);
+
+          const resumeCardId = progressData.nextCardId ?? null;
+          if (resumeCardId) {
+            const resumeIndex = shuffled.findIndex(card => card.id === resumeCardId);
+            setCurrentIndex(resumeIndex >= 0 ? resumeIndex : 0);
+          } else {
+            setCurrentIndex(0);
+          }
+        } else {
+          setCards([]);
+          setCurrentIndex(0);
         }
-        setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-      });
+      } catch {
+        if (isActive) {
+          setCards([]);
+          setCurrentIndex(0);
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isActive = false;
+    };
   }, [topicId]);
 
   const handleAnswer = async (correct: boolean) => {
     const currentCard = cards[currentIndex];
+    const nextCardId = currentIndex < cards.length - 1 ? cards[currentIndex + 1]?.id : null;
 
     setSessionTotal(prev => prev + 1);
     if (correct) {
@@ -56,6 +96,8 @@ export default function PracticePage() {
           body: JSON.stringify({
             cardId: currentCard.id,
             correct,
+            topicId: currentCard.topic,
+            nextCardId,
           }),
         });
       } catch (err) {
@@ -63,7 +105,9 @@ export default function PracticePage() {
       }
     }
 
-    // Move to next card or complete
+  };
+
+  const handleNext = () => {
     if (currentIndex < cards.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
@@ -190,7 +234,12 @@ export default function PracticePage() {
         </div>
 
         {/* Flashcard */}
-        <Flashcard card={currentCard} onAnswer={handleAnswer} />
+        <Flashcard
+          key={currentCard.id}
+          card={currentCard}
+          onAnswer={handleAnswer}
+          onNext={handleNext}
+        />
 
         {/* Subtopic indicator */}
         <div className="mt-6 text-center text-sm text-gray-400">
