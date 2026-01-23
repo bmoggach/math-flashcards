@@ -60,19 +60,27 @@ export default async function DashboardPage() {
             </h1>
             <p className="text-gray-500 mt-1">Choose a topic to practice</p>
           </div>
-          <form
-            action={async () => {
-              'use server';
-              await signOut();
-            }}
-          >
-            <button
-              type="submit"
-              className="text-gray-500 hover:text-gray-700 text-sm"
+          <div className="flex items-center gap-4">
+            <a
+              href="/parent"
+              className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
             >
-              Log out
-            </button>
-          </form>
+              Parent Dashboard
+            </a>
+            <form
+              action={async () => {
+                'use server';
+                await signOut();
+              }}
+            >
+              <button
+                type="submit"
+                className="text-gray-500 hover:text-gray-700 text-sm"
+              >
+                Log out
+              </button>
+            </form>
+          </div>
         </div>
 
         {/* Overall Progress */}

@@ -33,9 +33,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const { cardId, correct } = await request.json();
+    const { cardId, correct, topicId } = await request.json();
 
-    if (!cardId || typeof correct !== 'boolean') {
+    if (!cardId || typeof correct !== 'boolean' || typeof topicId !== 'string') {
       return NextResponse.json({ error: 'Invalid request data' }, { status: 400 });
     }
 
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    await updateProgress(user.id, cardId, correct);
+    await updateProgress(user.id, cardId, correct, topicId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
