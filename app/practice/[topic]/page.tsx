@@ -16,6 +16,14 @@ interface ProgressResponse {
   progress?: Record<string, CardProgress>;
 }
 
+interface FlashcardsResponse {
+  flashcards?: FlashcardType[];
+}
+
+interface ProgressResumeResponse {
+  nextCardId?: string | null;
+}
+
 export default function PracticePage() {
   const params = useParams();
   const topicId = params.topic as string;
@@ -47,13 +55,15 @@ export default function PracticePage() {
           isNeedsWorkSession
             ? fetch('/api/needs-work')
             : fetch(`/api/flashcards?topic=${topicId}`),
-          isNeedsWorkSession ? Promise.resolve(null) : fetch('/api/progress'),
+          isNeedsWorkSession
+            ? Promise.resolve(null)
+            : fetch(`/api/progress?topicId=${topicId}`),
         ]);
 
         const cardsData = (await cardsResponse.json()) as FlashcardsResponse;
         const progressData = progressResponse
-          ? ((await progressResponse.json()) as ProgressResponse)
-          : { progress: undefined };
+          ? ((await progressResponse.json()) as ProgressResumeResponse)
+          : { nextCardId: null };
 
         if (!isActive) return;
 
@@ -61,27 +71,10 @@ export default function PracticePage() {
           const shuffled = [...cardsData.flashcards].sort(() => Math.random() - 0.5);
           setCards(shuffled);
 
-          if (!isNeedsWorkSession && progressData.progress) {
-            const progress = progressData.progress;
-            let mostRecentCardId: string | null = null;
-            let mostRecentTimestamp = 0;
-
-            for (const card of shuffled) {
-              const lastSeen = progress[card.id]?.lastSeen;
-              if (!lastSeen) continue;
-              const timestamp = Date.parse(lastSeen);
-              if (timestamp > mostRecentTimestamp) {
-                mostRecentTimestamp = timestamp;
-                mostRecentCardId = card.id;
-              }
-            }
-
-            if (mostRecentCardId) {
-              const resumeIndex = shuffled.findIndex(card => card.id === mostRecentCardId);
-              setCurrentIndex(resumeIndex >= 0 ? resumeIndex : 0);
-            } else {
-              setCurrentIndex(0);
-            }
+          const resumeCardId = isNeedsWorkSession ? null : progressData.nextCardId ?? null;
+          if (resumeCardId) {
+            const resumeIndex = shuffled.findIndex(card => card.id === resumeCardId);
+            setCurrentIndex(resumeIndex >= 0 ? resumeIndex : 0);
           } else {
             setCurrentIndex(0);
           }
