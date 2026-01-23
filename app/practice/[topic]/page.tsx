@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Flashcard from '@/components/Flashcard';
 import ProgressBar from '@/components/ProgressBar';
@@ -26,8 +26,13 @@ interface ProgressResumeResponse {
 
 export default function PracticePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const topicId = params.topic as string;
   const isNeedsWorkSession = topicId === 'needs-work';
+  const mode = searchParams.get('mode');
+  const isLightningMode = mode === 'lightning';
+  const isSprintMode = mode === 'sprint';
+  const maxCards = isLightningMode ? 10 : isSprintMode ? 15 : null;
   const [cards, setCards] = useState<FlashcardType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionCorrect, setSessionCorrect] = useState(0);
@@ -69,11 +74,12 @@ export default function PracticePage() {
 
         if (cardsData.flashcards) {
           const shuffled = [...cardsData.flashcards].sort(() => Math.random() - 0.5);
-          setCards(shuffled);
+          const limitedCards = maxCards ? shuffled.slice(0, maxCards) : shuffled;
+          setCards(limitedCards);
 
           const resumeCardId = isNeedsWorkSession ? null : progressData.nextCardId ?? null;
           if (resumeCardId) {
-            const resumeIndex = shuffled.findIndex(card => card.id === resumeCardId);
+            const resumeIndex = limitedCards.findIndex(card => card.id === resumeCardId);
             setCurrentIndex(resumeIndex >= 0 ? resumeIndex : 0);
           } else {
             setCurrentIndex(0);
@@ -99,7 +105,7 @@ export default function PracticePage() {
     return () => {
       isActive = false;
     };
-  }, [topicId, isNeedsWorkSession]);
+  }, [topicId, isNeedsWorkSession, maxCards]);
 
   const advanceCard = () => {
     if (currentIndex < cards.length - 1) {
@@ -255,8 +261,15 @@ export default function PracticePage() {
             </svg>
             Back
           </Link>
-          <div className={`${topic.color} text-white px-4 py-1 rounded-full text-sm font-medium`}>
-            {topic.icon} {topic.name}
+          <div className="flex items-center gap-2">
+            {mode ? (
+              <span className="bg-purple-100 text-purple-700 text-xs font-semibold px-3 py-1 rounded-full">
+                {isLightningMode ? 'Lightning Round' : isSprintMode ? 'Unit Sprint' : 'Practice Mode'}
+              </span>
+            ) : null}
+            <div className={`${topic.color} text-white px-4 py-1 rounded-full text-sm font-medium`}>
+              {topic.icon} {topic.name}
+            </div>
           </div>
         </div>
 

@@ -212,6 +212,54 @@ export async function getUserProgress(userId: number): Promise<Record<string, Ca
   return progress;
 }
 
+export async function getUserAttemptTotals(userId: number): Promise<{ attempts: number; correct: number }> {
+  const db = getDb();
+
+  const rows = await db`
+    SELECT COUNT(*)::int AS attempts,
+           COALESCE(SUM(CASE WHEN correct THEN 1 ELSE 0 END), 0)::int AS correct
+    FROM card_attempts
+    WHERE user_id = ${userId}
+  `;
+
+  const row = rows[0];
+  return {
+    attempts: row?.attempts ?? 0,
+    correct: row?.correct ?? 0,
+  };
+}
+
+export async function getUserAttemptsToday(userId: number): Promise<number> {
+  const db = getDb();
+
+  const rows = await db`
+    SELECT COUNT(*)::int AS attempts
+    FROM card_attempts
+    WHERE user_id = ${userId}
+      AND created_at >= CURRENT_DATE
+      AND created_at < CURRENT_DATE + INTERVAL '1 day'
+  `;
+
+  return rows[0]?.attempts ?? 0;
+}
+
+export async function getUserPracticeDates(userId: number, limit = 30): Promise<string[]> {
+  const db = getDb();
+
+  const rows = await db`
+    SELECT DISTINCT DATE(created_at) AS day
+    FROM card_attempts
+    WHERE user_id = ${userId}
+    ORDER BY day DESC
+    LIMIT ${limit}
+  `;
+
+  return rows.map(row => {
+    const day = row.day instanceof Date ? row.day : new Date(row.day);
+    return day.toISOString().slice(0, 10);
+  });
+}
+
 export async function updateProgress(
   userId: number,
   cardId: string,
